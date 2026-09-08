@@ -23,7 +23,6 @@ const Search = () => {
   }), false )
 
   useEffect ( () => {
-    
 
     const timeOutId = setTimeout(async () => {
       if(searchQuery.trim()){
