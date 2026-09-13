@@ -4,6 +4,7 @@ import { Client, Databases, ID, Query } from "react-native-appwrite";
 
 const DATABASE_ID = process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID!;
 const METRICS_ID = process.env.EXPO_PUBLIC_APPWRITE_METRICS_ID!;
+const SAVED_MOVIES_ID = process.env.EXPO_PUBLIC_APPWRITE_SAVED_MOVIES_ID!;
 
 const client = new Client()
   .setEndpoint(process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!)
@@ -61,5 +62,76 @@ export const getTrendingMovies = async (): Promise<
   } catch (error) {
     console.log(error);
     return undefined;
+  }
+};
+
+export const saveMovie = async (movie: {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date: string;
+}) => {
+  try {
+    const result = await database.listDocuments(DATABASE_ID, SAVED_MOVIES_ID, [
+      Query.equal("movie_id", movie.id),
+    ]);
+
+    // Movie is not already saved
+    if (result.documents.length === 0) {
+      await database.createDocument(DATABASE_ID, SAVED_MOVIES_ID, ID.unique(), {
+        movie_id: movie.id,
+        title: movie.title,
+        poster_url: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+        release_date: movie.release_date,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const isMovieSaved = async (movieId: number) => {
+  try {
+    const result = await database.listDocuments(DATABASE_ID, SAVED_MOVIES_ID, [
+      Query.equal("movie_id", movieId),
+    ]);
+
+    return result.documents.length > 0;
+  } catch (error) {
+    console.log("Error checking saved movie:", error);
+    throw error;
+  }
+};
+
+export const getSavedMovies = async () => {
+  try {
+    const result = await database.listDocuments(DATABASE_ID, SAVED_MOVIES_ID, [
+      Query.orderDesc("$createdAt"),
+    ]);
+
+    return result.documents;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const removeSavedMovie = async (movieId: number) => {
+  try {
+    const result = await database.listDocuments(DATABASE_ID, SAVED_MOVIES_ID, [
+      Query.equal("movie_id", movieId),
+    ]);
+
+    if (result.documents.length === 0) {
+      return;
+    }
+
+    const savedMovie = result.documents[0];
+
+    await database.deleteDocument(DATABASE_ID, SAVED_MOVIES_ID, savedMovie.$id);
+  } catch (error) {
+    console.log(error);
+    throw error;
   }
 };

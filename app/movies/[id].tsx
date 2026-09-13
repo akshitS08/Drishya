@@ -1,7 +1,9 @@
 import { icons } from "@/constants/icons";
 import { fetchMovieDetails } from "@/services/api";
+import { isMovieSaved, removeSavedMovie, saveMovie } from "@/services/appwrite";
 import useFetch from "@/services/useFetch";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -28,11 +30,28 @@ const MovieInfo = ({ label, value }: MovieInfoProps) => (
 const MovieDetails = () => {
   const router = useRouter();
 
+  const [isSaved, setIsSaved] = useState(false);
+
   const { id } = useLocalSearchParams();
 
   const { data: movie, loading } = useFetch(() =>
     fetchMovieDetails(id as string),
   );
+
+  useEffect(() => {
+    const checkSavedMovie = async () => {
+      if (!movie) return;
+
+      try {
+        const saved = await isMovieSaved(movie.id);
+        setIsSaved(saved);
+      } catch (error) {
+        console.log("Error checking saved movie:", error);
+      }
+    };
+
+    checkSavedMovie();
+  }, [movie]);
 
   return (
     <View className="bg-primary flex-1">
@@ -48,7 +67,39 @@ const MovieDetails = () => {
         </View>
 
         <View className="flex-col items-start justify-center mt-5 px-5">
-          <Text className="text-white font-bold text-xl">{movie?.title}</Text>
+          <View className="flex-row items-center justify-between w-full">
+            <Text className="text-white font-bold text-xl flex-1">
+              {movie?.title}
+            </Text>
+
+            {/* Here we are creating the heart shaped saved button */}
+            <TouchableOpacity
+              className="ml-4 mr-2"
+              onPress={async () => {
+                if (!movie) return;
+
+                try {
+                  if (isSaved) {
+                    await removeSavedMovie(movie.id);
+                    setIsSaved(false);
+                  } else {
+                    await saveMovie(movie);
+                    setIsSaved(true);
+                  }
+                } catch (error) {
+                  console.log("Error updating saved movie:", error);
+                }
+              }}
+            >
+              <Image
+                source={isSaved ? icons.saved_filled : icons.saved_empty}
+                className="size-7"
+                resizeMode="contain"
+                tintColor={isSaved ? undefined : "#FFFFFF"}
+              />
+            </TouchableOpacity>
+          </View>
+
           <View className="flex-row items-center gap-x-2 mt-2">
             <Text className="text-light-200 text-sm">
               {movie?.release_date?.split("-")[0]}
